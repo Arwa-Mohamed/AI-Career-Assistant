@@ -63,7 +63,7 @@ render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
 
 ALLOWED_HOSTS = env_list(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1",
+    "localhost,127.0.0.1,ai-career-assistant-api.vercel.app",
 )
 
 if render_hostname and render_hostname not in ALLOWED_HOSTS:
@@ -278,7 +278,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173",
+    "http://localhost:5173,http://127.0.0.1:5173,https://ai-career-assistant-bay.vercel.app",
 )
 
 CSRF_TRUSTED_ORIGINS = env_list(
