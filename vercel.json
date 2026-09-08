@@ -6,21 +6,19 @@
     },
     "backend": {
       "root": "backend/",
-      "framework": "django"
+      "entrypoint": "config.wsgi:application"
     }
   },
   "rewrites": [
     {
-      "source": "/api(/.*)?",
+      "source": "/api/(.*)",
       "destination": {
-        "type": "service",
         "service": "backend"
       }
     },
     {
       "source": "/(.*)",
       "destination": {
-        "type": "service",
         "service": "frontend"
       }
     }
