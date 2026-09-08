@@ -1,0 +1,449 @@
+import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+import { loginUser } from "../services/api";
+import { useAuth } from "../context/AuthContext";
+
+import "./Auth.css";
+
+function Login() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
+
+  const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState("");
+
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const usernameError = fieldErrors.username;
+  const passwordError = fieldErrors.password;
+
+  const canSubmit = useMemo(() => {
+    return (
+      username.trim().length > 0 &&
+      password.length > 0 &&
+      !loading &&
+      !socialLoading
+    );
+  }, [username, password, loading, socialLoading]);
+
+  /* =========================================================
+     VALIDATION
+     ========================================================= */
+
+  const validateForm = () => {
+    const errors = {};
+
+    if (!username.trim()) {
+      errors.username = "Please enter your username.";
+    } else if (username.trim().length < 3) {
+      errors.username =
+        "Username must be at least 3 characters.";
+    }
+
+    if (!password) {
+      errors.password =
+        "Please enter your password.";
+    }
+
+    setFieldErrors(errors);
+
+    return Object.keys(errors).length === 0;
+  };
+
+  const clearFieldError = (field) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+
+      const updated = { ...prev };
+      delete updated[field];
+
+      return updated;
+    });
+  };
+
+  /* =========================================================
+     LOGIN
+     ========================================================= */
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    setError("");
+
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const data = await loginUser(
+        username.trim(),
+        password
+      );
+
+      if (!data?.access || !data?.refresh) {
+        throw new Error(
+          "Login response does not contain valid authentication tokens."
+        );
+      }
+
+      login(
+        data.access,
+        data.refresh
+      );
+
+      navigate("/dashboard");
+    } catch (err) {
+      const message =
+        err?.message ||
+        "Login failed. Please check your credentials and try again.";
+
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* =========================================================
+     SOCIAL LOGIN
+     ========================================================= */
+
+  const handleSocialLogin = (provider) => {
+    setError("");
+    setFieldErrors({});
+    setSocialLoading(provider);
+
+    window.location.href =
+      `http://127.0.0.1:8000/accounts/${provider}/login/`;
+  };
+
+  /* =========================================================
+     JSX
+     ========================================================= */
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        {/* BRAND */}
+
+        <div className="auth-brand">
+          <div className="auth-logo">
+            AI
+          </div>
+
+          <div>
+            <h1>Career Assistant</h1>
+            <p>
+              AI-powered career guidance
+            </p>
+          </div>
+        </div>
+
+        {/* HEADING */}
+
+        <div className="auth-heading">
+          <span className="auth-kicker">
+            WELCOME BACK
+          </span>
+
+          <h2>
+            Welcome back 👋
+          </h2>
+
+          <p>
+            Sign in to continue your
+            personalized career journey.
+          </p>
+        </div>
+
+        {/* ERROR */}
+
+        {error && (
+          <div
+            className="auth-alert auth-alert-error"
+            role="alert"
+          >
+            <span className="auth-alert-icon">
+              !
+            </span>
+
+            <div>
+              <strong>
+                Sign in unsuccessful
+              </strong>
+
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* FORM */}
+
+        <form
+          className="auth-form"
+          onSubmit={handleSubmit}
+          noValidate
+        >
+          {/* USERNAME */}
+
+          <div
+            className={`auth-field ${
+              usernameError
+                ? "has-error"
+                : ""
+            }`}
+          >
+            <div className="auth-label-row">
+              <label htmlFor="login-username">
+                Username
+              </label>
+            </div>
+
+            <div className="auth-input-wrapper">
+              <span className="auth-input-icon">
+                @
+              </span>
+
+              <input
+                id="login-username"
+                type="text"
+                value={username}
+                onChange={(e) => {
+                  setUsername(
+                    e.target.value
+                  );
+                  clearFieldError("username");
+                  setError("");
+                }}
+                placeholder="Enter your username"
+                autoComplete="username"
+                disabled={
+                  loading ||
+                  !!socialLoading
+                }
+                aria-invalid={
+                  !!usernameError
+                }
+                aria-describedby={
+                  usernameError
+                    ? "login-username-error"
+                    : undefined
+                }
+                required
+              />
+            </div>
+
+            {usernameError && (
+              <span
+                id="login-username-error"
+                className="field-error"
+              >
+                {usernameError}
+              </span>
+            )}
+          </div>
+
+          {/* PASSWORD */}
+
+          <div
+            className={`auth-field ${
+              passwordError
+                ? "has-error"
+                : ""
+            }`}
+          >
+            <div className="auth-label-row">
+              <label htmlFor="login-password">
+                Password
+              </label>
+            </div>
+
+            <div className="password-wrapper">
+              <span className="auth-input-icon">
+                •
+              </span>
+
+              <input
+                id="login-password"
+                type={
+                  showPassword
+                    ? "text"
+                    : "password"
+                }
+                value={password}
+                onChange={(e) => {
+                  setPassword(
+                    e.target.value
+                  );
+                  clearFieldError("password");
+                  setError("");
+                }}
+                placeholder="Enter your password"
+                autoComplete="current-password"
+                disabled={
+                  loading ||
+                  !!socialLoading
+                }
+                aria-invalid={
+                  !!passwordError
+                }
+                aria-describedby={
+                  passwordError
+                    ? "login-password-error"
+                    : undefined
+                }
+                required
+              />
+
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() =>
+                  setShowPassword(
+                    (prev) => !prev
+                  )
+                }
+                aria-label={
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
+                disabled={
+                  loading ||
+                  !!socialLoading
+                }
+              >
+                {showPassword
+                  ? "Hide"
+                  : "Show"}
+              </button>
+            </div>
+
+            {passwordError && (
+              <span
+                id="login-password-error"
+                className="field-error"
+              >
+                {passwordError}
+              </span>
+            )}
+          </div>
+
+          {/* SUBMIT */}
+
+          <button
+            className="auth-button"
+            type="submit"
+            disabled={!canSubmit}
+          >
+            {loading ? (
+              <>
+                <span className="auth-button-spinner" />
+                Signing in...
+              </>
+            ) : (
+              <>
+                Sign In
+                <span className="auth-button-arrow">
+                  →
+                </span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* DIVIDER */}
+
+        <div className="auth-divider">
+          <span>OR CONTINUE WITH</span>
+        </div>
+
+        {/* SOCIAL */}
+
+        <div className="social-buttons">
+          <button
+            type="button"
+            className="social-button"
+            onClick={() =>
+              handleSocialLogin("google")
+            }
+            disabled={
+              loading || !!socialLoading
+            }
+          >
+            <span className="social-icon google-icon">
+              G
+            </span>
+
+            <span>
+              {socialLoading === "google"
+                ? "Connecting..."
+                : "Continue with Google"}
+            </span>
+
+            {socialLoading ===
+              "google" && (
+              <span className="social-spinner" />
+            )}
+          </button>
+
+          <button
+            type="button"
+            className="social-button"
+            onClick={() =>
+              handleSocialLogin("github")
+            }
+            disabled={
+              loading || !!socialLoading
+            }
+          >
+            <span className="social-icon github-icon">
+              Git
+            </span>
+
+            <span>
+              {socialLoading === "github"
+                ? "Connecting..."
+                : "Continue with GitHub"}
+            </span>
+
+            {socialLoading ===
+              "github" && (
+              <span className="social-spinner" />
+            )}
+          </button>
+        </div>
+
+        {/* FOOTER */}
+
+        <div className="auth-footer">
+          <span>
+            Don't have an account?
+          </span>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/register")
+            }
+            disabled={
+              loading || !!socialLoading
+            }
+          >
+            Create Account
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Login;
