@@ -5,9 +5,25 @@ from rest_framework import serializers
 from .models import CV
 
 
-class CVSerializer(
-    serializers.ModelSerializer
-):
+class CVFileField(serializers.FileField):
+    """
+    File field that keeps upload behavior but does not call
+    storage.url() when serializing a private Vercel Blob file.
+
+    For private cloud storage, returning the stored pathname is safer
+    than attempting to expose a public URL.
+    """
+
+    def to_representation(self, value):
+        if not value:
+            return None
+
+        return value.name
+
+
+class CVSerializer(serializers.ModelSerializer):
+    file = CVFileField()
+
     class Meta:
         model = CV
 
