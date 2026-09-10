@@ -63,7 +63,7 @@ render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
 
 ALLOWED_HOSTS = env_list(
     "ALLOWED_HOSTS",
-    "localhost,127.0.0.1,ai-career-assistant-api.vercel.app",
+    "localhost,127.0.0.1,ai-career-assistant-api.vercel.app,.vercel.app",
 )
 
 if render_hostname and render_hostname not in ALLOWED_HOSTS:
