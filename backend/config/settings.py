@@ -111,7 +111,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.github",
 ]
 
-SITE_ID = int(os.getenv("SITE_ID", "2"))
+SITE_ID = int(os.getenv("SITE_ID", "3"))
 
 
 # =========================================================
@@ -283,7 +283,7 @@ CORS_ALLOWED_ORIGINS = env_list(
 
 CSRF_TRUSTED_ORIGINS = env_list(
     "CSRF_TRUSTED_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173",
+    "http://localhost:5173,http://127.0.0.1:5173,https://ai-career-assistant-bay.vercel.app",
 )
 
 
@@ -355,6 +355,59 @@ SECURE_PROXY_SSL_HEADER = (
 
 
 # =========================================================
+# EMAIL
+# =========================================================
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+
+EMAIL_HOST = os.getenv(
+    "EMAIL_HOST",
+    "smtp.gmail.com",
+)
+
+EMAIL_PORT = int(
+    os.getenv(
+        "EMAIL_PORT",
+        "587",
+    )
+)
+
+EMAIL_USE_TLS = env_bool(
+    "EMAIL_USE_TLS",
+    True,
+)
+
+EMAIL_USE_SSL = env_bool(
+    "EMAIL_USE_SSL",
+    False,
+)
+
+EMAIL_HOST_USER = os.getenv(
+    "EMAIL_HOST_USER",
+    "",
+)
+
+EMAIL_HOST_PASSWORD = os.getenv(
+    "EMAIL_HOST_PASSWORD",
+    "",
+)
+
+DEFAULT_FROM_EMAIL = os.getenv(
+    "DEFAULT_FROM_EMAIL",
+    EMAIL_HOST_USER,
+)
+
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+EMAIL_TIMEOUT = int(
+    os.getenv(
+        "EMAIL_TIMEOUT",
+        "20",
+    )
+)
+
+
+# =========================================================
 # SOCIAL AUTHENTICATION
 # =========================================================
 
@@ -365,6 +418,35 @@ SOCIALACCOUNT_LOGIN_ON_GET = env_bool(
 
 LOGIN_REDIRECT_URL = "/api/auth/social/success/"
 
+
+# =========================================================
+# ACCOUNT / EMAIL VERIFICATION
+# =========================================================
+
+ACCOUNT_SIGNUP_FIELDS = [
+    "email*",
+    "username*",
+    "password1*",
+    "password2*",
+]
+
+ACCOUNT_UNIQUE_EMAIL = True
+
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+
+ACCOUNT_CHANGE_EMAIL = True
+
+ACCOUNT_EMAIL_NOTIFICATIONS = True
+
+ACCOUNT_CONFIRM_EMAIL_ON_GET = True
+
+ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = (
+    "https://ai-career-assistant-bay.vercel.app/email-verified"
+)
+
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = (
+    "https://ai-career-assistant-bay.vercel.app/email-verified"
+)
 
 # =========================================================
 # HUGGING FACE

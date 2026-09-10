@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Profile from "./pages/Profile";
@@ -16,11 +18,13 @@ import SocialCallback from "./pages/SocialCallback";
 import Layout from "./components/Layout";
 import TailoredCV from "./pages/TailoredCV";
 
+import EmailVerified from "./pages/EmailVerified";
+import ResetPassword from "./pages/ResetPassword";
+
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-
         {/* =========================
             Public Pages
         ========================= */}
@@ -36,10 +40,24 @@ function App() {
         />
 
         <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
+
+        <Route
+          path="/reset-password/:uid/:token"
+          element={<ResetPassword />}
+        />
+
+        <Route
           path="/social-callback"
           element={<SocialCallback />}
         />
 
+        <Route
+          path="/email-verified"
+          element={<EmailVerified />}
+        />
 
         {/* =========================
             Protected Pages
@@ -172,11 +190,9 @@ function App() {
           path="*"
           element={<Login />}
         />
-
       </Routes>
     </BrowserRouter>
   );
 }
-
 
 export default App;

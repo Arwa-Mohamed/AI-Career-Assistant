@@ -1,0 +1,176 @@
+.email-verified-page {
+  min-height: 100vh;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: #f8fafc;
+}
+
+.email-verified-background {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  box-sizing: border-box;
+}
+
+.email-verified-card {
+  width: 100%;
+  max-width: 560px;
+  padding: 48px 42px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.email-verified-icon {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+}
+
+.email-verified-icon span {
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 800;
+  color: #16a34a;
+}
+
+.email-verified-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 12px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.email-verified-card h1 {
+  margin: 0 0 12px;
+  color: #0f172a;
+  font-size: 32px;
+  line-height: 1.2;
+  font-weight: 750;
+}
+
+.email-verified-description {
+  margin: 0 auto 28px;
+  max-width: 460px;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.email-verified-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding: 18px;
+  text-align: left;
+  border: 1px solid #dcfce7;
+  border-radius: 16px;
+  background: #f7fef9;
+}
+
+.email-verified-status-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.email-verified-status strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #166534;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.email-verified-status span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.email-verified-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 20px;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: #4f46e5;
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.email-verified-primary-button:hover {
+  background: #4338ca;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.2);
+}
+
+.email-verified-primary-button:active {
+  transform: translateY(1px);
+}
+
+.email-verified-redirect {
+  margin: 14px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .email-verified-background {
+    padding: 20px 14px;
+  }
+
+  .email-verified-card {
+    padding: 36px 24px;
+    border-radius: 20px;
+  }
+
+  .email-verified-card h1 {
+    font-size: 26px;
+  }
+
+  .email-verified-description {
+    font-size: 14px;
+  }
+
+  .email-verified-status {
+    padding: 15px;
+  }
+}

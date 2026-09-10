@@ -1350,3 +1350,127 @@
     margin-right: 21px;
   }
 }
+
+/* =========================================================
+   FORGOT PASSWORD
+========================================================= */
+
+.forgot-password-link {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+
+  color: #4f46e5;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.forgot-password-link:hover:not(:disabled) {
+  color: #4338ca;
+  text-decoration: underline;
+}
+
+.forgot-password-link:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   SUCCESS ALERT
+========================================================= */
+
+.auth-alert-success {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+
+  width: 100%;
+  box-sizing: border-box;
+
+  margin-bottom: 22px;
+  padding: 14px 16px;
+
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.auth-alert-success .auth-alert-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 24px;
+  height: 24px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #dcfce7;
+  color: #15803d;
+
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.auth-alert-success strong {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: #166534;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.auth-alert-success p {
+  margin: 0;
+
+  color: #3f6212;
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* =========================================================
+   FORGOT PASSWORD CARD DETAILS
+========================================================= */
+
+.auth-card .auth-heading h2 {
+  line-height: 1.25;
+}
+
+.auth-card .auth-heading p {
+  line-height: 1.7;
+}
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
+
+@media (max-width: 480px) {
+  .forgot-password-link {
+    font-size: 11px;
+  }
+
+  .auth-alert-success {
+    padding: 12px 14px;
+  }
+
+  .auth-alert-success p {
+    font-size: 11px;
+  }
+}

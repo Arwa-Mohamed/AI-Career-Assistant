@@ -24,18 +24,19 @@ function Login() {
   const usernameError = fieldErrors.username;
   const passwordError = fieldErrors.password;
 
+  const isBusy = loading || Boolean(socialLoading);
+
   const canSubmit = useMemo(() => {
     return (
       username.trim().length > 0 &&
       password.length > 0 &&
-      !loading &&
-      !socialLoading
+      !isBusy
     );
-  }, [username, password, loading, socialLoading]);
+  }, [username, password, isBusy]);
 
   /* =========================================================
      VALIDATION
-     ========================================================= */
+  ========================================================= */
 
   const validateForm = () => {
     const errors = {};
@@ -48,8 +49,7 @@ function Login() {
     }
 
     if (!password) {
-      errors.password =
-        "Please enter your password.";
+      errors.password = "Please enter your password.";
     }
 
     setFieldErrors(errors);
@@ -58,22 +58,38 @@ function Login() {
   };
 
   const clearFieldError = (field) => {
-    setFieldErrors((prev) => {
-      if (!prev[field]) return prev;
+    setFieldErrors((previous) => {
+      if (!previous[field]) {
+        return previous;
+      }
 
-      const updated = { ...prev };
+      const updated = { ...previous };
       delete updated[field];
 
       return updated;
     });
   };
 
+  const handleUsernameChange = (event) => {
+    setUsername(event.target.value);
+
+    clearFieldError("username");
+    setError("");
+  };
+
+  const handlePasswordChange = (event) => {
+    setPassword(event.target.value);
+
+    clearFieldError("password");
+    setError("");
+  };
+
   /* =========================================================
      LOGIN
-     ========================================================= */
+  ========================================================= */
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
     setError("");
 
@@ -114,25 +130,43 @@ function Login() {
 
   /* =========================================================
      SOCIAL LOGIN
-     ========================================================= */
+  ========================================================= */
 
   const handleSocialLogin = (provider) => {
     setError("");
     setFieldErrors({});
     setSocialLoading(provider);
 
+    const apiUrl =
+      import.meta.env.VITE_API_URL ||
+      "http://127.0.0.1:8000";
+
     window.location.href =
-      `http://127.0.0.1:8000/accounts/${provider}/login/`;
+      `${apiUrl}/accounts/${provider}/login/`;
+  };
+
+  /* =========================================================
+     FORGOT PASSWORD
+  ========================================================= */
+
+  const handleForgotPassword = () => {
+    setError("");
+    setFieldErrors({});
+
+    navigate("/forgot-password");
   };
 
   /* =========================================================
      JSX
-     ========================================================= */
+  ========================================================= */
 
   return (
     <div className="auth-page">
       <div className="auth-card">
-        {/* BRAND */}
+
+        {/* ===================================================
+            BRAND
+        =================================================== */}
 
         <div className="auth-brand">
           <div className="auth-logo">
@@ -141,13 +175,16 @@ function Login() {
 
           <div>
             <h1>Career Assistant</h1>
+
             <p>
               AI-powered career guidance
             </p>
           </div>
         </div>
 
-        {/* HEADING */}
+        {/* ===================================================
+            HEADING
+        =================================================== */}
 
         <div className="auth-heading">
           <span className="auth-kicker">
@@ -155,7 +192,7 @@ function Login() {
           </span>
 
           <h2>
-            Welcome back 👋
+            Welcome 👋
           </h2>
 
           <p>
@@ -164,12 +201,15 @@ function Login() {
           </p>
         </div>
 
-        {/* ERROR */}
+        {/* ===================================================
+            ERROR
+        =================================================== */}
 
         {error && (
           <div
             className="auth-alert auth-alert-error"
             role="alert"
+            aria-live="polite"
           >
             <span className="auth-alert-icon">
               !
@@ -180,19 +220,26 @@ function Login() {
                 Sign in unsuccessful
               </strong>
 
-              <p>{error}</p>
+              <p>
+                {error}
+              </p>
             </div>
           </div>
         )}
 
-        {/* FORM */}
+        {/* ===================================================
+            FORM
+        =================================================== */}
 
         <form
           className="auth-form"
           onSubmit={handleSubmit}
           noValidate
         >
-          {/* USERNAME */}
+
+          {/* =================================================
+              USERNAME
+          ================================================= */}
 
           <div
             className={`auth-field ${
@@ -208,30 +255,23 @@ function Login() {
             </div>
 
             <div className="auth-input-wrapper">
-              <span className="auth-input-icon">
+              <span
+                className="auth-input-icon"
+                aria-hidden="true"
+              >
                 @
               </span>
 
               <input
                 id="login-username"
+                name="username"
                 type="text"
                 value={username}
-                onChange={(e) => {
-                  setUsername(
-                    e.target.value
-                  );
-                  clearFieldError("username");
-                  setError("");
-                }}
+                onChange={handleUsernameChange}
                 placeholder="Enter your username"
                 autoComplete="username"
-                disabled={
-                  loading ||
-                  !!socialLoading
-                }
-                aria-invalid={
-                  !!usernameError
-                }
+                disabled={isBusy}
+                aria-invalid={Boolean(usernameError)}
                 aria-describedby={
                   usernameError
                     ? "login-username-error"
@@ -251,7 +291,9 @@ function Login() {
             )}
           </div>
 
-          {/* PASSWORD */}
+          {/* =================================================
+              PASSWORD
+          ================================================= */}
 
           <div
             className={`auth-field ${
@@ -264,37 +306,39 @@ function Login() {
               <label htmlFor="login-password">
                 Password
               </label>
+
+              <button
+                type="button"
+                className="forgot-password-link"
+                onClick={handleForgotPassword}
+                disabled={isBusy}
+              >
+                Forgot Password?
+              </button>
             </div>
 
             <div className="password-wrapper">
-              <span className="auth-input-icon">
+              <span
+                className="auth-input-icon"
+                aria-hidden="true"
+              >
                 •
               </span>
 
               <input
                 id="login-password"
+                name="password"
                 type={
                   showPassword
                     ? "text"
                     : "password"
                 }
                 value={password}
-                onChange={(e) => {
-                  setPassword(
-                    e.target.value
-                  );
-                  clearFieldError("password");
-                  setError("");
-                }}
+                onChange={handlePasswordChange}
                 placeholder="Enter your password"
                 autoComplete="current-password"
-                disabled={
-                  loading ||
-                  !!socialLoading
-                }
-                aria-invalid={
-                  !!passwordError
-                }
+                disabled={isBusy}
+                aria-invalid={Boolean(passwordError)}
                 aria-describedby={
                   passwordError
                     ? "login-password-error"
@@ -308,7 +352,7 @@ function Login() {
                 className="password-toggle"
                 onClick={() =>
                   setShowPassword(
-                    (prev) => !prev
+                    (previous) => !previous
                   )
                 }
                 aria-label={
@@ -316,10 +360,7 @@ function Login() {
                     ? "Hide password"
                     : "Show password"
                 }
-                disabled={
-                  loading ||
-                  !!socialLoading
-                }
+                disabled={isBusy}
               >
                 {showPassword
                   ? "Hide"
@@ -337,7 +378,9 @@ function Login() {
             )}
           </div>
 
-          {/* SUBMIT */}
+          {/* =================================================
+              SUBMIT
+          ================================================= */}
 
           <button
             className="auth-button"
@@ -346,13 +389,21 @@ function Login() {
           >
             {loading ? (
               <>
-                <span className="auth-button-spinner" />
+                <span
+                  className="auth-button-spinner"
+                  aria-hidden="true"
+                />
+
                 Signing in...
               </>
             ) : (
               <>
                 Sign In
-                <span className="auth-button-arrow">
+
+                <span
+                  className="auth-button-arrow"
+                  aria-hidden="true"
+                >
                   →
                 </span>
               </>
@@ -360,24 +411,31 @@ function Login() {
           </button>
         </form>
 
-        {/* DIVIDER */}
+        {/* ===================================================
+            DIVIDER
+        =================================================== */}
 
         <div className="auth-divider">
-          <span>OR CONTINUE WITH</span>
+          <span>
+            OR CONTINUE WITH
+          </span>
         </div>
 
-        {/* SOCIAL */}
+        {/* ===================================================
+            SOCIAL LOGIN
+        =================================================== */}
 
         <div className="social-buttons">
+
+          {/* GOOGLE */}
+
           <button
             type="button"
             className="social-button"
             onClick={() =>
               handleSocialLogin("google")
             }
-            disabled={
-              loading || !!socialLoading
-            }
+            disabled={isBusy}
           >
             <span className="social-icon google-icon">
               G
@@ -389,11 +447,15 @@ function Login() {
                 : "Continue with Google"}
             </span>
 
-            {socialLoading ===
-              "google" && (
-              <span className="social-spinner" />
+            {socialLoading === "google" && (
+              <span
+                className="social-spinner"
+                aria-hidden="true"
+              />
             )}
           </button>
+
+          {/* GITHUB */}
 
           <button
             type="button"
@@ -401,9 +463,7 @@ function Login() {
             onClick={() =>
               handleSocialLogin("github")
             }
-            disabled={
-              loading || !!socialLoading
-            }
+            disabled={isBusy}
           >
             <span className="social-icon github-icon">
               Git
@@ -415,14 +475,18 @@ function Login() {
                 : "Continue with GitHub"}
             </span>
 
-            {socialLoading ===
-              "github" && (
-              <span className="social-spinner" />
+            {socialLoading === "github" && (
+              <span
+                className="social-spinner"
+                aria-hidden="true"
+              />
             )}
           </button>
         </div>
 
-        {/* FOOTER */}
+        {/* ===================================================
+            FOOTER
+        =================================================== */}
 
         <div className="auth-footer">
           <span>
@@ -434,13 +498,12 @@ function Login() {
             onClick={() =>
               navigate("/register")
             }
-            disabled={
-              loading || !!socialLoading
-            }
+            disabled={isBusy}
           >
             Create Account
           </button>
         </div>
+
       </div>
     </div>
   );

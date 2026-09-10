@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import AccountSecurity from "../components/AccountSecurity/AccountSecurity";
+
 import {
   getProfile,
   updateProfile,
@@ -10,7 +12,18 @@ import {
 
 import "./Profile.css";
 
-const API_URL = "http://127.0.0.1:8000";
+// =========================================================
+// API URL
+// =========================================================
+
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://127.0.0.1:8000";
+
+
+// =========================================================
+// MEDIA URL
+// =========================================================
 
 function getMediaUrl(imageUrl) {
   if (!imageUrl) {
@@ -30,6 +43,11 @@ function getMediaUrl(imageUrl) {
 
   return `${API_URL}/${imageUrl}`;
 }
+
+
+// =========================================================
+// PROFILE COMPONENT
+// =========================================================
 
 function Profile() {
   const navigate = useNavigate();
@@ -59,6 +77,7 @@ function Profile() {
 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
 
   // =========================================================
   // LOAD PROFILE + ACCOUNT + PROJECTS
@@ -100,6 +119,7 @@ function Profile() {
          * 2. User account full name
          * 3. Username
          */
+
         const resolvedFullName =
           savedFullName ||
           accountFullName ||
@@ -170,6 +190,7 @@ function Profile() {
     };
   }, []);
 
+
   // =========================================================
   // HANDLE INPUT
   // =========================================================
@@ -193,6 +214,7 @@ function Profile() {
       setError("");
     }
   };
+
 
   // =========================================================
   // HANDLE PROFILE IMAGE
@@ -296,6 +318,7 @@ function Profile() {
     }
   };
 
+
   // =========================================================
   // SAVE PROFILE
   // =========================================================
@@ -309,12 +332,23 @@ function Profile() {
       setMessage("");
 
       const data = await updateProfile({
-       full_name: profile.full_name,
-        phone: profile.phone,
-        location: profile.location,
-        bio: profile.bio,
-        career_goal: profile.career_goal,
-        linkedin_url: profile.linkedin_url,
+        full_name:
+          profile.full_name,
+
+        phone:
+          profile.phone,
+
+        location:
+          profile.location,
+
+        bio:
+          profile.bio,
+
+        career_goal:
+          profile.career_goal,
+
+        linkedin_url:
+          profile.linkedin_url,
       });
 
       setProfile((previous) => ({
@@ -400,6 +434,7 @@ function Profile() {
     }
   };
 
+
   // =========================================================
   // PROFILE COMPLETENESS
   // =========================================================
@@ -457,6 +492,7 @@ function Profile() {
         String(field.value).trim() === ""
     );
 
+
   // =========================================================
   // DISPLAY DATA
   // =========================================================
@@ -477,6 +513,7 @@ function Profile() {
 
   const hasProfileImage =
     Boolean(imagePreview);
+
 
   // =========================================================
   // PROJECTS
@@ -522,6 +559,7 @@ function Profile() {
     )
     .slice(0, 4);
 
+
   // =========================================================
   // PROFILE STRENGTH
   // =========================================================
@@ -558,6 +596,7 @@ function Profile() {
       "Add more professional information so the AI can better understand your career goals.";
   }
 
+
   // =========================================================
   // LOADING STATE
   // =========================================================
@@ -585,6 +624,7 @@ function Profile() {
       </div>
     );
   }
+
 
   // =========================================================
   // RENDER
@@ -1132,6 +1172,7 @@ function Profile() {
 
             <div className="profile-form-ai-badge">
               AI
+
               <span>
                 Powered Profile
               </span>
@@ -1539,6 +1580,13 @@ function Profile() {
         </section>
 
       </div>
+
+
+      {/* =====================================================
+          ACCOUNT SECURITY
+      ===================================================== */}
+
+      <AccountSecurity />
 
 
       {/* =====================================================
