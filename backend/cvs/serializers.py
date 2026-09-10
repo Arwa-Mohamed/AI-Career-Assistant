@@ -5,7 +5,9 @@ from rest_framework import serializers
 from .models import CV
 
 
-class CVSerializer(serializers.ModelSerializer):
+class CVSerializer(
+    serializers.ModelSerializer
+):
     class Meta:
         model = CV
 
@@ -44,11 +46,14 @@ class CVSerializer(serializers.ModelSerializer):
                 "Only PDF and DOCX files are allowed."
             )
 
-        max_size = 5 * 1024 * 1024
+        # Vercel Functions have a 4.5 MB request-body
+        # limit for server uploads, so keep CV files
+        # safely below that threshold.
+        max_size = 4 * 1024 * 1024
 
         if value.size > max_size:
             raise serializers.ValidationError(
-                "File size must not exceed 5 MB."
+                "File size must not exceed 4 MB."
             )
 
         return value

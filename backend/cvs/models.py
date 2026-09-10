@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.db import models
 
+from .storage import CVFileStorage
+
 
 class CV(models.Model):
     user = models.ForeignKey(
@@ -9,18 +11,34 @@ class CV(models.Model):
         related_name="cvs",
     )
 
-    title = models.CharField(max_length=150, default="My CV")
-    file = models.FileField(upload_to="cvs/")
+    title = models.CharField(
+        max_length=150,
+        default="My CV",
+    )
 
-    extracted_text = models.TextField(blank=True)
+    file = models.FileField(
+        upload_to="cvs/",
+        storage=CVFileStorage(),
+    )
+
+    extracted_text = models.TextField(
+        blank=True,
+    )
 
     parsed_data = models.JSONField(
         default=dict,
         blank=True,
     )
 
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    uploaded_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
 
     def __str__(self):
-        return f"{self.user.username} - {self.title}"
+        return (
+            f"{self.user.username} - {self.title}"
+        )

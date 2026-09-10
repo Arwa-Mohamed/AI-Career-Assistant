@@ -1,4 +1,6 @@
 from io import BytesIO
+from pathlib import Path
+from tempfile import NamedTemporaryFile
 from xml.sax.saxutils import escape
 
 from django.http import FileResponse
@@ -7,28 +9,27 @@ from reportlab.lib import colors
 from reportlab.lib.enums import TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import (
-    getSampleStyleSheet,
     ParagraphStyle,
+    getSampleStyleSheet,
 )
 from reportlab.lib.units import mm
 from reportlab.platypus import (
-    SimpleDocTemplate,
+    HRFlowable,
+    KeepTogether,
     Paragraph,
+    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
-    HRFlowable,
-    KeepTogether,
 )
 
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import (
     FormParser,
     MultiPartParser,
 )
-from rest_framework.permissions import (
-    IsAuthenticated,
-)
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -38,79 +39,188 @@ from .utils.extractor import extract_text
 from .utils.parser import parse_cv
 
 
+# =========================================================
+# CV LIST / CREATE
+# =========================================================
+
+
 class CVListCreateView(
     generics.ListCreateAPIView
 ):
     serializer_class = CVSerializer
+
     permission_classes = [
         IsAuthenticated
     ]
+
     parser_classes = [
         MultiPartParser,
         FormParser,
     ]
 
     def get_queryset(self):
-        return CV.objects.filter(
-            user=self.request.user
-        ).order_by(
-            "-uploaded_at"
+        return (
+            CV.objects.filter(
+                user=self.request.user
+            )
+            .order_by("-uploaded_at")
         )
 
     def perform_create(
         self,
         serializer,
     ):
-        cv = serializer.save(
-            user=self.request.user
+        uploaded_file = (
+            serializer.validated_data.get("file")
         )
 
-        try:
-            extracted_text = extract_text(
-                cv.file.path
+        if uploaded_file is None:
+            raise ValidationError(
+                {
+                    "file": (
+                        "A CV file is required."
+                    )
+                }
             )
-        except Exception:
-            extracted_text = ""
+
+        suffix = (
+            Path(uploaded_file.name)
+            .suffix
+            .lower()
+        )
+
+        temp_path = None
 
         try:
-            parsed_data = parse_cv(
+            # =================================================
+            # TEMPORARY FILE FOR PARSING
+            # =================================================
+            #
+            # Vercel deployment filesystem is read-only.
+            # /tmp is writable during the request and is used
+            # only as temporary working space.
+            #
+
+            with NamedTemporaryFile(
+                mode="wb",
+                suffix=suffix,
+                delete=False,
+            ) as temp_file:
+
+                for chunk in uploaded_file.chunks():
+                    temp_file.write(chunk)
+
+                temp_path = temp_file.name
+
+            # Reset uploaded file pointer before saving
+            # through the configured CV storage backend.
+            try:
+                uploaded_file.seek(0)
+            except Exception:
+                pass
+
+            # =================================================
+            # TEXT EXTRACTION
+            # =================================================
+
+            try:
+                extracted_text = extract_text(
+                    temp_path
+                )
+            except Exception:
+                extracted_text = ""
+
+            # =================================================
+            # CV PARSING
+            # =================================================
+
+            try:
+                parsed_data = parse_cv(
+                    extracted_text
+                )
+            except Exception:
+                parsed_data = {}
+
+            if not isinstance(
+                parsed_data,
+                dict,
+            ):
+                parsed_data = {}
+
+            parsed_data.setdefault(
+                "projects",
+                [],
+            )
+
+            # =================================================
+            # SAVE CV FILE
+            # =================================================
+            #
+            # Local:
+            #     media/cvs/
+            #
+            # Vercel:
+            #     Vercel Blob
+            #
+
+            try:
+                cv = serializer.save(
+                    user=self.request.user
+                )
+            except Exception as exc:
+                raise ValidationError(
+                    {
+                        "file": (
+                            "The CV could not be stored. "
+                            "Please try again."
+                        )
+                    }
+                ) from exc
+
+            # =================================================
+            # SAVE PARSED INFORMATION
+            # =================================================
+
+            cv.extracted_text = (
                 extracted_text
             )
-        except Exception:
-            parsed_data = {}
 
-        if not isinstance(
-            parsed_data,
-            dict,
-        ):
-            parsed_data = {}
+            cv.parsed_data = (
+                parsed_data
+            )
 
-        parsed_data.setdefault(
-            "projects",
-            [],
-        )
+            cv.save(
+                update_fields=[
+                    "extracted_text",
+                    "parsed_data",
+                    "updated_at",
+                ]
+            )
 
-        cv.extracted_text = (
-            extracted_text
-        )
+        finally:
+            # =================================================
+            # REMOVE TEMPORARY FILE
+            # =================================================
 
-        cv.parsed_data = (
-            parsed_data
-        )
+            if temp_path:
+                try:
+                    Path(temp_path).unlink(
+                        missing_ok=True
+                    )
+                except Exception:
+                    pass
 
-        cv.save(
-            update_fields=[
-                "extracted_text",
-                "parsed_data",
-                "updated_at",
-            ]
-        )
+
+# =========================================================
+# CV DETAIL
+# =========================================================
 
 
 class CVDetailView(
     generics.RetrieveDestroyAPIView
 ):
     serializer_class = CVSerializer
+
     permission_classes = [
         IsAuthenticated
     ]
@@ -119,6 +229,11 @@ class CVDetailView(
         return CV.objects.filter(
             user=self.request.user
         )
+
+
+# =========================================================
+# CV ANALYSIS
+# =========================================================
 
 
 class CVAnalysisView(
@@ -150,14 +265,21 @@ class CVAnalysisView(
             {
                 "id": cv.id,
                 "title": cv.title,
-                "parsed_data":
-                    cv.parsed_data or {},
-                "text_length":
-                    len(
-                        cv.extracted_text or ""
-                    ),
+                "parsed_data": (
+                    cv.parsed_data
+                    or {}
+                ),
+                "text_length": len(
+                    cv.extracted_text
+                    or ""
+                ),
             }
         )
+
+
+# =========================================================
+# ADD PROJECT TO CV
+# =========================================================
 
 
 class AddProjectToCVView(
@@ -268,63 +390,68 @@ class AddProjectToCVView(
                         "This project is already "
                         "added to the CV."
                     ),
-                    "parsed_data":
-                        parsed_data,
+                    "parsed_data": parsed_data,
                 },
                 status=status.HTTP_200_OK,
             )
 
         project_data = {
-            "source_project_id":
-                project.id,
-            "title":
-                getattr(
-                    project,
-                    "title",
-                    "",
-                ),
-            "description":
-                getattr(
-                    project,
-                    "description",
-                    "",
-                ),
-            "target_role":
-                getattr(
-                    project,
-                    "target_role",
-                    "",
-                ),
-            "skills":
+            "source_project_id": project.id,
+            "title": getattr(
+                project,
+                "title",
+                "",
+            ),
+            "description": getattr(
+                project,
+                "description",
+                "",
+            ),
+            "target_role": getattr(
+                project,
+                "target_role",
+                "",
+            ),
+            "skills": (
                 getattr(
                     project,
                     "skills",
                     [],
-                ) or [],
-            "objectives":
+                )
+                or []
+            ),
+            "objectives": (
                 getattr(
                     project,
                     "objectives",
                     [],
-                ) or [],
-            "github_url":
+                )
+                or []
+            ),
+            "github_url": (
                 getattr(
                     project,
                     "github_url",
                     "",
-                ) or "",
-            "demo_url":
+                )
+                or ""
+            ),
+            "demo_url": (
                 getattr(
                     project,
                     "demo_url",
                     "",
-                ) or "",
-            "difficulty":
+                )
+                or ""
+            ),
+            "difficulty": (
                 getattr(
                     project,
                     "difficulty",
                     "",
-                ) or "",
+                )
+                or ""
+            ),
             "completed_at": (
                 project.completed_at.isoformat()
                 if getattr(
@@ -361,15 +488,17 @@ class AddProjectToCVView(
                     "Project added to CV "
                     "successfully."
                 ),
-                "project":
-                    project_data,
-                "cv_id":
-                    cv.id,
-                "parsed_data":
-                    parsed_data,
+                "project": project_data,
+                "cv_id": cv.id,
+                "parsed_data": parsed_data,
             },
             status=status.HTTP_200_OK,
         )
+
+
+# =========================================================
+# REMOVE PROJECT FROM CV
+# =========================================================
 
 
 class RemoveProjectFromCVView(
@@ -472,17 +601,15 @@ class RemoveProjectFromCVView(
                     "Project removed from CV "
                     "successfully."
                 ),
-                "cv_id":
-                    cv.id,
-                "parsed_data":
-                    parsed_data,
+                "cv_id": cv.id,
+                "parsed_data": parsed_data,
             },
             status=status.HTTP_200_OK,
         )
 
 
 # =========================================================
-# GENERATED CV PDF
+# GENERATED CV PDF HELPERS
 # =========================================================
 
 
@@ -574,8 +701,7 @@ def _normalize_experience(
             if item.strip():
                 result.append(
                     {
-                        "job_title":
-                            item.strip(),
+                        "job_title": item.strip(),
                         "company": "",
                         "duration": "",
                         "description": "",
@@ -591,52 +717,48 @@ def _normalize_experience(
 
         result.append(
             {
-                "job_title":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "job_title",
-                                "title",
-                                "position",
-                                "role",
-                            ],
-                        )
-                    ),
-                "company":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "company",
-                                "organization",
-                                "employer",
-                            ],
-                        )
-                    ),
-                "duration":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "duration",
-                                "date",
-                                "period",
-                                "year",
-                            ],
-                        )
-                    ),
-                "description":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "description",
-                                "responsibilities",
-                                "details",
-                            ],
-                        )
-                    ),
+                "job_title": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "job_title",
+                            "title",
+                            "position",
+                            "role",
+                        ],
+                    )
+                ),
+                "company": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "company",
+                            "organization",
+                            "employer",
+                        ],
+                    )
+                ),
+                "duration": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "duration",
+                            "date",
+                            "period",
+                            "year",
+                        ],
+                    )
+                ),
+                "description": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "description",
+                            "responsibilities",
+                            "details",
+                        ],
+                    )
+                ),
             }
         )
 
@@ -656,8 +778,7 @@ def _normalize_education(
             if item.strip():
                 result.append(
                     {
-                        "degree":
-                            item.strip(),
+                        "degree": item.strip(),
                         "institution": "",
                         "year": "",
                         "description": "",
@@ -673,51 +794,47 @@ def _normalize_education(
 
         result.append(
             {
-                "degree":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "degree",
-                                "title",
-                                "program",
-                                "qualification",
-                            ],
-                        )
-                    ),
-                "institution":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "institution",
-                                "university",
-                                "school",
-                                "college",
-                            ],
-                        )
-                    ),
-                "year":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "year",
-                                "date",
-                                "period",
-                            ],
-                        )
-                    ),
-                "description":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "description",
-                                "details",
-                            ],
-                        )
-                    ),
+                "degree": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "degree",
+                            "title",
+                            "program",
+                            "qualification",
+                        ],
+                    )
+                ),
+                "institution": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "institution",
+                            "university",
+                            "school",
+                            "college",
+                        ],
+                    )
+                ),
+                "year": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "year",
+                            "date",
+                            "period",
+                        ],
+                    )
+                ),
+                "description": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "description",
+                            "details",
+                        ],
+                    )
+                ),
             }
         )
 
@@ -770,31 +887,28 @@ def _normalize_certifications(
 
         result.append(
             {
-                "name":
-                    name,
-                "issuer":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "issuer",
-                                "organization",
-                                "provider",
-                                "institution",
-                            ],
-                        )
-                    ),
-                "year":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "year",
-                                "date",
-                                "period",
-                            ],
-                        )
-                    ),
+                "name": name,
+                "issuer": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "issuer",
+                            "organization",
+                            "provider",
+                            "institution",
+                        ],
+                    )
+                ),
+                "year": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "year",
+                            "date",
+                            "period",
+                        ],
+                    )
+                ),
             }
         )
 
@@ -852,52 +966,45 @@ def _normalize_projects(
 
         result.append(
             {
-                "title":
-                    title,
-                "target_role":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "target_role",
-                                "role",
-                            ],
-                        )
-                    ),
-                "description":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "description",
-                            ],
-                        )
-                    ),
-                "skills":
-                    skills,
-                "objectives":
-                    objectives,
-                "github_url":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "github_url",
-                                "github",
-                            ],
-                        )
-                    ),
-                "demo_url":
-                    _clean_text(
-                        _field(
-                            item,
-                            [
-                                "demo_url",
-                                "demo",
-                                "live_url",
-                            ],
-                        )
-                    ),
+                "title": title,
+                "target_role": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "target_role",
+                            "role",
+                        ],
+                    )
+                ),
+                "description": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "description",
+                        ],
+                    )
+                ),
+                "skills": skills,
+                "objectives": objectives,
+                "github_url": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "github_url",
+                            "github",
+                        ],
+                    )
+                ),
+                "demo_url": _clean_text(
+                    _field(
+                        item,
+                        [
+                            "demo_url",
+                            "demo",
+                            "live_url",
+                        ],
+                    )
+                ),
             }
         )
 
@@ -941,6 +1048,11 @@ def _template_config(
         template,
         configs["modern"],
     )
+
+
+# =========================================================
+# GENERATED CV PDF
+# =========================================================
 
 
 class GenerateCVPDFView(
@@ -1122,7 +1234,7 @@ class GenerateCVPDFView(
                 parsed_data = {}
 
         # =====================================================
-        # OPTIONAL STRUCTURED CONTENT FROM CV BUILDER
+        # OPTIONAL STRUCTURED CONTENT
         # =====================================================
 
         content = data.get(
@@ -1163,54 +1275,47 @@ class GenerateCVPDFView(
         for project in completed_projects:
             fallback_projects.append(
                 {
-                    "title":
-                        getattr(
-                            project,
-                            "title",
-                            "",
-                        ),
-                    "target_role":
-                        getattr(
-                            project,
-                            "target_role",
-                            "",
-                        )
-                        or "",
-                    "description":
-                        getattr(
-                            project,
-                            "description",
-                            "",
-                        )
-                        or "",
-                    "skills":
-                        getattr(
-                            project,
-                            "skills",
-                            [],
-                        )
-                        or [],
-                    "objectives":
-                        getattr(
-                            project,
-                            "objectives",
-                            [],
-                        )
-                        or [],
-                    "github_url":
-                        getattr(
-                            project,
-                            "github_url",
-                            "",
-                        )
-                        or "",
-                    "demo_url":
-                        getattr(
-                            project,
-                            "demo_url",
-                            "",
-                        )
-                        or "",
+                    "title": getattr(
+                        project,
+                        "title",
+                        "",
+                    ),
+                    "target_role": getattr(
+                        project,
+                        "target_role",
+                        "",
+                    )
+                    or "",
+                    "description": getattr(
+                        project,
+                        "description",
+                        "",
+                    )
+                    or "",
+                    "skills": getattr(
+                        project,
+                        "skills",
+                        [],
+                    )
+                    or [],
+                    "objectives": getattr(
+                        project,
+                        "objectives",
+                        [],
+                    )
+                    or [],
+                    "github_url": getattr(
+                        project,
+                        "github_url",
+                        "",
+                    )
+                    or "",
+                    "demo_url": getattr(
+                        project,
+                        "demo_url",
+                        "",
+                    )
+                    or "",
                 }
             )
 
@@ -1256,10 +1361,8 @@ class GenerateCVPDFView(
                     )
                 )
 
-            clean_skills = (
-                _unique_strings(
-                    raw_skills
-                )
+            clean_skills = _unique_strings(
+                raw_skills
             )
 
         # =====================================================
@@ -1376,21 +1479,17 @@ class GenerateCVPDFView(
         # =====================================================
 
         if "achievements" in content:
-            achievements = (
-                _unique_strings(
-                    content.get(
-                        "achievements",
-                        [],
-                    )
+            achievements = _unique_strings(
+                content.get(
+                    "achievements",
+                    [],
                 )
             )
         else:
-            achievements = (
-                _unique_strings(
-                    parsed_data.get(
-                        "achievements",
-                        [],
-                    )
+            achievements = _unique_strings(
+                parsed_data.get(
+                    "achievements",
+                    [],
                 )
             )
 
@@ -1399,21 +1498,17 @@ class GenerateCVPDFView(
         # =====================================================
 
         if "languages" in content:
-            languages = (
-                _unique_strings(
-                    content.get(
-                        "languages",
-                        [],
-                    )
+            languages = _unique_strings(
+                content.get(
+                    "languages",
+                    [],
                 )
             )
         else:
-            languages = (
-                _unique_strings(
-                    parsed_data.get(
-                        "languages",
-                        [],
-                    )
+            languages = _unique_strings(
+                parsed_data.get(
+                    "languages",
+                    [],
                 )
             )
 
@@ -1457,22 +1552,16 @@ class GenerateCVPDFView(
         # PDF SETUP
         # =====================================================
 
-        template_config = (
-            _template_config(
-                template
-            )
+        template_config = _template_config(
+            template
         )
 
         accent_color = colors.HexColor(
-            template_config[
-                "accent"
-            ]
+            template_config["accent"]
         )
 
         section_color = colors.HexColor(
-            template_config[
-                "section"
-            ]
+            template_config["section"]
         )
 
         buffer = BytesIO()
@@ -1488,9 +1577,7 @@ class GenerateCVPDFView(
             author="AI Career Assistant",
         )
 
-        styles = (
-            getSampleStyleSheet()
-        )
+        styles = getSampleStyleSheet()
 
         name_style = ParagraphStyle(
             "CVName",
@@ -1603,8 +1690,8 @@ class GenerateCVPDFView(
             ),
             Paragraph(
                 _escape(
-                    title or
-                    "Professional"
+                    title
+                    or "Professional"
                 ),
                 title_style,
             ),
@@ -1705,10 +1792,9 @@ class GenerateCVPDFView(
         story.append(
             HRFlowable(
                 width="100%",
-                thickness=
-                    template_config[
-                        "rule"
-                    ],
+                thickness=template_config[
+                    "rule"
+                ],
                 color=accent_color,
             )
         )
@@ -1750,12 +1836,9 @@ class GenerateCVPDFView(
                 )
             )
 
-            skill_text = (
-                " • ".join(
-                    _escape(skill)
-                    for skill
-                    in clean_skills
-                )
+            skill_text = " • ".join(
+                _escape(skill)
+                for skill in clean_skills
             )
 
             story.append(
@@ -1787,8 +1870,7 @@ class GenerateCVPDFView(
                     item.get(
                         "job_title"
                     )
-                    or
-                    "Professional Experience"
+                    or "Professional Experience"
                 )
 
                 company = item.get(
@@ -1809,18 +1891,14 @@ class GenerateCVPDFView(
                     or ""
                 )
 
-                heading_text = (
-                    _escape(
-                        job_title
-                    )
+                heading_text = _escape(
+                    job_title
                 )
 
                 if company:
                     heading_text += (
                         " — "
-                        + _escape(
-                            company
-                        )
+                        + _escape(company)
                     )
 
                 entry.append(
@@ -1843,8 +1921,7 @@ class GenerateCVPDFView(
                 if description:
                     description_lines = [
                         part.strip()
-                        for part in
-                        description.replace(
+                        for part in description.replace(
                             "•",
                             "\n",
                         ).splitlines()
@@ -1854,10 +1931,7 @@ class GenerateCVPDFView(
                     if len(
                         description_lines
                     ) > 1:
-
-                        for bullet in (
-                            description_lines
-                        ):
+                        for bullet in description_lines:
                             entry.append(
                                 Paragraph(
                                     "• "
@@ -1867,7 +1941,6 @@ class GenerateCVPDFView(
                                     bullet_style,
                                 )
                             )
-
                     else:
                         entry.append(
                             Paragraph(
@@ -1879,9 +1952,7 @@ class GenerateCVPDFView(
                         )
 
                 story.append(
-                    KeepTogether(
-                        entry
-                    )
+                    KeepTogether(entry)
                 )
 
         # =====================================================
@@ -1931,10 +2002,8 @@ class GenerateCVPDFView(
                     or ""
                 )
 
-                heading_text = (
-                    _escape(
-                        degree
-                    )
+                heading_text = _escape(
+                    degree
                 )
 
                 if institution:
@@ -1955,9 +2024,7 @@ class GenerateCVPDFView(
                 if year:
                     entry.append(
                         Paragraph(
-                            _escape(
-                                year
-                            ),
+                            _escape(year),
                             small_style,
                         )
                     )
@@ -1973,9 +2040,7 @@ class GenerateCVPDFView(
                     )
 
                 story.append(
-                    KeepTogether(
-                        entry
-                    )
+                    KeepTogether(entry)
                 )
 
         # =====================================================
@@ -1996,25 +2061,19 @@ class GenerateCVPDFView(
             for item in certifications:
                 entry = []
 
-                name_value = (
-                    item.get(
-                        "name",
-                        "",
-                    )
+                name_value = item.get(
+                    "name",
+                    "",
                 )
 
-                issuer = (
-                    item.get(
-                        "issuer",
-                        "",
-                    )
+                issuer = item.get(
+                    "issuer",
+                    "",
                 )
 
-                year = (
-                    item.get(
-                        "year",
-                        "",
-                    )
+                year = item.get(
+                    "year",
+                    "",
                 )
 
                 heading_text = _escape(
@@ -2042,9 +2101,7 @@ class GenerateCVPDFView(
                 )
 
                 story.append(
-                    KeepTogether(
-                        entry
-                    )
+                    KeepTogether(entry)
                 )
 
         # =====================================================
@@ -2146,9 +2203,7 @@ class GenerateCVPDFView(
                         )
                     )
 
-                for objective in objectives[
-                    :4
-                ]:
+                for objective in objectives[:4]:
                     project_story.append(
                         Paragraph(
                             "• "
@@ -2167,8 +2222,7 @@ class GenerateCVPDFView(
                                 _escape(
                                     skill
                                 )
-                                for skill
-                                in skills
+                                for skill in skills
                             ),
                             small_style,
                         )
@@ -2195,9 +2249,7 @@ class GenerateCVPDFView(
                 if links:
                     project_story.append(
                         Paragraph(
-                            " | ".join(
-                                links
-                            ),
+                            " | ".join(links),
                             small_style,
                         )
                     )
@@ -2252,11 +2304,8 @@ class GenerateCVPDFView(
             story.append(
                 Paragraph(
                     " • ".join(
-                        _escape(
-                            language
-                        )
-                        for language
-                        in languages
+                        _escape(language)
+                        for language in languages
                     ),
                     body_style,
                 )
@@ -2286,32 +2335,24 @@ class GenerateCVPDFView(
             if linkedin:
                 links.append(
                     "LinkedIn: "
-                    + _escape(
-                        linkedin
-                    )
+                    + _escape(linkedin)
                 )
 
             if github:
                 links.append(
                     "GitHub: "
-                    + _escape(
-                        github
-                    )
+                    + _escape(github)
                 )
 
             if portfolio:
                 links.append(
                     "Portfolio: "
-                    + _escape(
-                        portfolio
-                    )
+                    + _escape(portfolio)
                 )
 
             story.append(
                 Paragraph(
-                    "<br/>".join(
-                        links
-                    ),
+                    "<br/>".join(links),
                     body_style,
                 )
             )
@@ -2320,15 +2361,12 @@ class GenerateCVPDFView(
         # BUILD PDF
         # =====================================================
 
-        document.build(
-            story
-        )
+        document.build(story)
 
         buffer.seek(0)
 
         safe_name = (
-            name
-            .replace("/", "_")
+            name.replace("/", "_")
             .replace("\\", "_")
             .replace(" ", "_")
             .strip("_")
@@ -2343,7 +2381,5 @@ class GenerateCVPDFView(
             buffer,
             as_attachment=True,
             filename=filename,
-            content_type=(
-                "application/pdf"
-            ),
+            content_type="application/pdf",
         )
