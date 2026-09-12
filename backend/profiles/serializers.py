@@ -18,6 +18,8 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     account_full_name = serializers.SerializerMethodField()
 
+    profile_image = serializers.SerializerMethodField()
+
     class Meta:
         model = Profile
 
@@ -46,7 +48,6 @@ class ProfileSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-
     def validate_profile_image(self, value):
         extension = Path(value.name).suffix.lower()
 
@@ -70,6 +71,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+    def get_profile_image(self, obj):
+        if not obj.profile_image:
+            return ""
+
+        try:
+            return obj.profile_image.url
+        except Exception:
+            return ""
 
     def get_account_full_name(self, obj):
         user = obj.user
