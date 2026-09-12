@@ -1,7 +1,8 @@
 import re
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterable, List, Optional
 
 from career_taxonomy.models import Role, RoleSkill, Skill
+from .canonical_profile import build_canonical_candidate_profile
 
 
 WORD_RE = re.compile(r"\b[\w+#./-]+\b", re.UNICODE)
@@ -21,10 +22,7 @@ def skill_terms(skill: Skill) -> List[str]:
 
     aliases = (
         skill.aliases
-        if isinstance(
-            skill.aliases,
-            list,
-        )
+        if isinstance(skill.aliases, list)
         else []
     )
 
@@ -38,9 +36,7 @@ def skill_terms(skill: Skill) -> List[str]:
     seen = set()
 
     for term in terms:
-        normalized = normalize_text(
-            term
-        )
+        normalized = normalize_text(term)
 
         if normalized and normalized not in seen:
             seen.add(normalized)
@@ -70,6 +66,12 @@ def contains_term(
 
 
 def candidate_text(cv: Any) -> str:
+    """
+    Legacy/fallback candidate text extraction.
+
+    This is intentionally kept for backward compatibility with older CVs.
+    Career Intelligence should prefer candidate_profile when available.
+    """
     if cv is None:
         return ""
 
@@ -79,10 +81,7 @@ def candidate_text(cv: Any) -> str:
 
     parsed = (
         cv.parsed_data
-        if isinstance(
-            cv.parsed_data,
-            dict,
-        )
+        if isinstance(cv.parsed_data, dict)
         else {}
     )
 
@@ -95,6 +94,7 @@ def candidate_text(cv: Any) -> str:
         "skills",
         "certifications",
         "training",
+        "languages",
     ):
         value = parsed.get(key)
 
@@ -109,19 +109,138 @@ def candidate_text(cv: Any) -> str:
                             (str, int, float),
                         )
                     )
-
                 elif item is not None:
-                    pieces.append(
-                        str(item)
-                    )
+                    pieces.append(str(item))
 
         elif value is not None:
-            pieces.append(
-                str(value)
-            )
+            pieces.append(str(value))
 
     return normalize_text(
         " ".join(pieces)
+    )
+
+
+def _candidate_profile_text(
+    candidate_profile: Optional[Dict[str, Any]],
+) -> str:
+    """
+    Build searchable candidate text from the canonical profile.
+
+    This is the preferred source for Career Intelligence.
+    """
+
+    if not isinstance(candidate_profile, dict):
+        return ""
+
+    pieces: List[str] = []
+
+    for key in (
+        "raw_text",
+        "summary",
+        "target_role",
+        "experience",
+        "education",
+        "projects",
+        "certifications",
+        "languages",
+        "skills_raw",
+    ):
+        value = candidate_profile.get(key)
+
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, dict):
+                    pieces.extend(
+                        str(v)
+                        for v in item.values()
+                        if v is not None
+                    )
+                elif item is not None:
+                    pieces.append(str(item))
+
+        elif value is not None:
+            pieces.append(str(value))
+
+    return normalize_text(
+        " ".join(pieces)
+    )
+
+
+def _candidate_skill_map(
+    candidate_profile: Optional[Dict[str, Any]],
+) -> Dict[int, Dict[str, Any]]:
+    """
+    Convert normalized taxonomy skills into a lookup map.
+
+    Expected candidate_profile["skills"] items look like:
+
+    {
+        "skill_id": 12,
+        "name": "Python",
+        "slug": "python",
+        "skill_type": "technical",
+        "matched_aliases": ["python"],
+        "confidence": 0.72,
+        "evidence": {
+            "source": "cv",
+            "explicit_section": True
+        }
+    }
+    """
+
+    if not isinstance(candidate_profile, dict):
+        return {}
+
+    skills = candidate_profile.get("skills")
+
+    if not isinstance(skills, list):
+        return {}
+
+    result: Dict[int, Dict[str, Any]] = {}
+
+    for item in skills:
+        if not isinstance(item, dict):
+            continue
+
+        skill_id = item.get("skill_id")
+
+        if skill_id is None:
+            continue
+
+        try:
+            skill_id = int(skill_id)
+        except (TypeError, ValueError):
+            continue
+
+        result[skill_id] = item
+
+    return result
+
+
+def _build_candidate_profile(
+    cv: Any,
+) -> Dict[str, Any]:
+    """
+    Build the canonical candidate profile when the caller does not
+    provide one.
+
+    This keeps build_job_intelligence backward-compatible while allowing
+    the main API flow to pass an already-built profile and avoid duplicate
+    work.
+    """
+
+    if cv is None:
+        return {}
+
+    return build_canonical_candidate_profile(
+        parsed_data=(
+            cv.parsed_data
+            if isinstance(cv.parsed_data, dict)
+            else {}
+        ),
+        extracted_text=(
+            cv.extracted_text or ""
+        ),
     )
 
 
@@ -130,9 +249,6 @@ def extract_job_skills(
 ) -> List[Dict[str, Any]]:
     """
     Extract taxonomy skills explicitly mentioned in the job description.
-
-    The method first scans the complete active Skill taxonomy using
-    skill names and aliases.
     """
 
     text = normalize_text(
@@ -157,9 +273,7 @@ def extract_job_skills(
     )
 
     for skill in skills:
-        terms = skill_terms(
-            skill
-        )
+        terms = skill_terms(skill)
 
         found_terms = [
             term
@@ -209,9 +323,7 @@ def _role_title_score(
     best = 0.0
 
     for title in titles:
-        normalized = normalize_text(
-            title
-        )
+        normalized = normalize_text(title)
 
         if not normalized:
             continue
@@ -342,7 +454,21 @@ def rank_job_roles(
 def match_candidate_to_role(
     cv: Any,
     role_id: int,
+    candidate_profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """
+    Match a candidate against a taxonomy role.
+
+    Preferred source:
+        candidate_profile["skills"]
+
+    Fallback:
+        canonical/raw CV text
+
+    This makes normalized taxonomy skills the primary source without
+    breaking older CV records.
+    """
+
     role = (
         Role.objects
         .filter(
@@ -369,9 +495,19 @@ def match_candidate_to_role(
             "role": None,
         }
 
-    text = candidate_text(
-        cv
+    if candidate_profile is None:
+        candidate_profile = _build_candidate_profile(cv)
+
+    normalized_skill_map = _candidate_skill_map(
+        candidate_profile
     )
+
+    profile_text = _candidate_profile_text(
+        candidate_profile
+    )
+
+    if not profile_text:
+        profile_text = candidate_text(cv)
 
     links = list(
         role.role_skills.all()
@@ -397,25 +533,68 @@ def match_candidate_to_role(
     for link in links:
         skill = link.skill
 
-        found_terms = [
-            term
-            for term in skill_terms(
-                skill
+        normalized_skill = normalized_skill_map.get(
+            skill.id
+        )
+
+        taxonomy_matched = (
+            normalized_skill is not None
+        )
+
+        found_terms = []
+
+        if normalized_skill:
+            found_terms = (
+                normalized_skill.get(
+                    "matched_aliases",
+                    [],
+                )
+                or []
             )
-            if contains_term(
-                text,
-                term,
-            )
-        ]
+
+        # Raw/canonical text is only a fallback.
+        if not taxonomy_matched:
+            found_terms = [
+                term
+                for term in skill_terms(skill)
+                if contains_term(
+                    profile_text,
+                    term,
+                )
+            ]
+
+        found = bool(
+            taxonomy_matched
+            or found_terms
+        )
 
         is_required = (
             link.importance
             == RoleSkill.Importance.REQUIRED
         )
 
+        weight = float(
+            link.weight or 0
+        )
+
         if is_required:
-            required_total += float(
-                link.weight or 0
+            required_total += weight
+
+        evidence = {}
+
+        if normalized_skill:
+            evidence = (
+                normalized_skill.get(
+                    "evidence",
+                    {}
+                )
+                if isinstance(
+                    normalized_skill.get(
+                        "evidence"
+                    ),
+                    dict,
+                )
+                else {}
             )
 
         entry = {
@@ -423,38 +602,45 @@ def match_candidate_to_role(
             "name": skill.name,
             "slug": skill.slug,
             "importance": link.importance,
-            "weight": float(
-                link.weight or 0
+            "weight": weight,
+            "minimum_level": link.minimum_level,
+            "matched_terms": list(
+                dict.fromkeys(
+                    found_terms
+                )
             ),
-            "minimum_level": (
-                link.minimum_level
+            "confidence": (
+                normalized_skill.get(
+                    "confidence"
+                )
+                if normalized_skill
+                else None
             ),
-            "matched_terms": found_terms,
+            "evidence": evidence,
+            "match_source": (
+                "taxonomy"
+                if taxonomy_matched
+                else (
+                    "profile_text"
+                    if found_terms
+                    else None
+                )
+            ),
         }
 
-        if found_terms:
-            matched.append(
-                entry
-            )
+        if found:
+            matched.append(entry)
 
-            matched_weight += float(
-                link.weight or 0
-            )
+            matched_weight += weight
 
             if is_required:
-                required_matched += float(
-                    link.weight or 0
-                )
+                required_matched += weight
 
         elif is_required:
-            missing.append(
-                entry
-            )
+            missing.append(entry)
 
         else:
-            partial.append(
-                entry
-            )
+            partial.append(entry)
 
     role_score = (
         matched_weight
@@ -603,14 +789,10 @@ def _application_readiness(
 
 
 def _merge_job_skill(
-    collection: dict[int, Dict[str, Any]],
+    collection: Dict[int, Dict[str, Any]],
     skill: Skill,
     matched_terms: List[str],
 ) -> None:
-    """
-    Add or merge a skill into the detected job skills collection.
-    """
-
     existing = collection.get(
         skill.id
     )
@@ -648,17 +830,7 @@ def _enrich_job_skills_from_role(
     role_id: int,
     existing_matches: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
-    """
-    Make job-skill extraction consistent with role detection.
-
-    This is a fallback/enrichment layer. It is especially useful when a
-    Role has a canonical skill linked to it, but that Skill record has
-    incomplete aliases.
-
-    We still require the skill name/alias to appear in the actual job text.
-    """
-
-    merged: dict[int, Dict[str, Any]] = {}
+    merged: Dict[int, Dict[str, Any]] = {}
 
     for item in existing_matches:
         merged[
@@ -692,9 +864,7 @@ def _enrich_job_skills_from_role(
 
         found_terms = [
             term
-            for term in skill_terms(
-                skill
-            )
+            for term in skill_terms(skill)
             if contains_term(
                 job_text,
                 term,
@@ -722,10 +892,26 @@ def build_job_intelligence(
     cv: Any,
     job_description: str,
     ats_score: float = 0.0,
+    candidate_profile: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """
+    Main job intelligence pipeline.
+
+    candidate_profile should ideally be passed from
+    build_candidate_intelligence().
+
+    If it is not passed, we build a canonical profile internally
+    as a backward-compatible fallback.
+    """
+
     job_text = normalize_text(
         job_description
     )
+
+    if candidate_profile is None:
+        candidate_profile = _build_candidate_profile(
+            cv
+        )
 
     job_skills = extract_job_skills(
         job_text
@@ -762,8 +948,6 @@ def build_job_intelligence(
 
     best_role = ranked_roles[0]
 
-    # Enrich job skill detection from the same role taxonomy
-    # used by role ranking and candidate matching.
     job_skills = _enrich_job_skills_from_role(
         job_text=job_text,
         role_id=best_role["role_id"],
@@ -771,8 +955,9 @@ def build_job_intelligence(
     )
 
     matched = match_candidate_to_role(
-        cv,
-        best_role["role_id"],
+        cv=cv,
+        role_id=best_role["role_id"],
+        candidate_profile=candidate_profile,
     )
 
     missing_ids = [

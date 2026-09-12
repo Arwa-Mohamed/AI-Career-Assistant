@@ -136,12 +136,13 @@ class CareerTaxonomyJobMatchView(APIView):
         # Keep the existing matching behavior and response fields.
         # ---------------------------------------------------------
         intelligence = (
-            build_job_intelligence(
-                cv=cv,
-                job_description=job_description,
-                ats_score=ats_score,
-            )
-        )
+         build_job_intelligence(
+         cv=cv,
+         job_description=job_description,
+         ats_score=ats_score,
+         candidate_profile=candidate_profile,
+    )
+)
 
         job_skills = intelligence.get(
             "job_skills",
