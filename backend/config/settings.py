@@ -28,12 +28,9 @@ load_dotenv(BASE_DIR / ".env")
 CLOUDINARY_URL = os.getenv("cloudinary://REDACTED", "").strip()
 
 if CLOUDINARY_URL:
-    cloudinary.config(cloudinary_url=CLOUDINARY_URL)
-else:
     cloudinary.config(
-        cloud_name=os.getenv("r4wot8dh", ""),
-        api_key=os.getenv("441334781831778", ""),
-        api_secret=os.getenv("iBNTcYYTIYgeOmbkfKCCqeE_kpM", ""),
+        cloudinary_url=CLOUDINARY_URL,
+        secure=True,
     )
 
 
