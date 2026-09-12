@@ -408,6 +408,690 @@ def _is_unknown_answer(answer: Any) -> bool:
 
 
 # ============================================================
+# QUESTION CONCEPTS
+# ============================================================
+
+QUESTION_CONCEPTS = {
+    # ---------------- DATA ANALYST ----------------
+
+    "clean and prepare a messy dataset": [
+        "missing values",
+        "duplicates",
+        "data types",
+        "outliers",
+        "standardization",
+        "validation",
+        "cleaning",
+    ],
+
+    "difference between mean, median, and mode": [
+        "mean",
+        "median",
+        "mode",
+        "outliers",
+        "distribution",
+    ],
+
+    "find duplicate records in a database": [
+        "group by",
+        "count",
+        "having",
+        "duplicate",
+        "sql",
+    ],
+
+    "exploratory data analysis": [
+        "missing values",
+        "distribution",
+        "outliers",
+        "correlation",
+        "visualization",
+        "statistics",
+    ],
+
+    "design a dashboard": [
+        "kpi",
+        "metrics",
+        "visualization",
+        "stakeholders",
+        "filters",
+        "clarity",
+    ],
+
+    # ---------------- DATA SCIENCE ----------------
+
+    "new machine learning problem": [
+        "data collection",
+        "data cleaning",
+        "feature engineering",
+        "training",
+        "validation",
+        "evaluation",
+    ],
+
+    "supervised and unsupervised learning": [
+        "supervised",
+        "unsupervised",
+        "labeled",
+        "unlabeled",
+        "classification",
+        "clustering",
+    ],
+
+    "missing values in a dataset": [
+        "missing values",
+        "remove",
+        "imputation",
+        "mean",
+        "median",
+        "mode",
+    ],
+
+    "overfitting": [
+        "overfitting",
+        "training",
+        "validation",
+        "regularization",
+        "cross validation",
+        "more data",
+    ],
+
+    "evaluation metric for a classification problem": [
+        "accuracy",
+        "precision",
+        "recall",
+        "f1",
+        "confusion matrix",
+        "roc",
+    ],
+
+    # ---------------- ML ENGINEER ----------------
+
+    "taking a machine learning model into production": [
+        "model",
+        "api",
+        "deployment",
+        "container",
+        "monitoring",
+        "versioning",
+    ],
+
+    "training, validation, and test datasets": [
+        "training",
+        "validation",
+        "test",
+        "generalization",
+        "unseen data",
+    ],
+
+    "monitor a machine learning model": [
+        "performance",
+        "drift",
+        "accuracy",
+        "latency",
+        "logging",
+        "monitoring",
+    ],
+
+    "choosing between different ml models": [
+        "data",
+        "performance",
+        "accuracy",
+        "complexity",
+        "interpretability",
+        "latency",
+    ],
+
+    "api that serves predictions": [
+        "api",
+        "endpoint",
+        "model",
+        "input",
+        "prediction",
+        "validation",
+    ],
+
+    # ---------------- FRONTEND ----------------
+
+    "difference between state and props in react": [
+        "state",
+        "props",
+        "component",
+        "parent",
+        "child",
+        "immutable",
+    ],
+
+    "improve the performance of a react application": [
+        "memoization",
+        "lazy loading",
+        "code splitting",
+        "rerender",
+        "usememo",
+        "usecallback",
+    ],
+
+    "reusable components": [
+        "reusability",
+        "component",
+        "props",
+        "maintainability",
+        "composition",
+    ],
+
+    "api loading, success, and error states": [
+        "loading",
+        "success",
+        "error",
+        "api",
+        "state",
+        "async",
+    ],
+
+    "responsive": [
+        "responsive",
+        "media queries",
+        "flexbox",
+        "grid",
+        "mobile",
+        "breakpoint",
+    ],
+
+    # ---------------- BACKEND ----------------
+
+    "difference between authentication and authorization": [
+        "authentication",
+        "identity",
+        "authorization",
+        "permission",
+        "access",
+    ],
+
+    "design a rest api": [
+        "endpoint",
+        "http",
+        "get",
+        "post",
+        "put",
+        "delete",
+        "status code",
+        "validation",
+    ],
+
+    "database indexing": [
+        "index",
+        "query",
+        "performance",
+        "lookup",
+        "database",
+    ],
+
+    "validation and errors in a backend api": [
+        "validation",
+        "error handling",
+        "status code",
+        "400",
+        "404",
+        "500",
+        "exception",
+    ],
+
+    "sql joins": [
+        "inner join",
+        "left join",
+        "right join",
+        "full join",
+        "matching",
+        "tables",
+    ],
+
+    # ---------------- FULL STACK ----------------
+
+    "full-stack application from frontend to database": [
+        "frontend",
+        "backend",
+        "api",
+        "database",
+        "authentication",
+        "deployment",
+    ],
+
+    "frontend application communicate with a backend api": [
+        "http",
+        "api",
+        "request",
+        "response",
+        "json",
+        "endpoint",
+    ],
+
+    "debug a problem where the frontend works locally": [
+        "environment",
+        "api",
+        "deployment",
+        "cors",
+        "logs",
+        "production",
+    ],
+
+    "secure a rest api": [
+        "authentication",
+        "authorization",
+        "https",
+        "validation",
+        "rate limiting",
+        "input",
+    ],
+
+    # ---------------- SOFTWARE ENGINEERING ----------------
+
+    "maintainable software": [
+        "clean code",
+        "solid",
+        "modularity",
+        "testing",
+        "documentation",
+        "separation",
+    ],
+
+    "unit testing and integration testing": [
+        "unit",
+        "integration",
+        "component",
+        "system",
+        "test",
+    ],
+
+    "debug a difficult software problem": [
+        "reproduce",
+        "logs",
+        "debugging",
+        "root cause",
+        "test",
+    ],
+
+    "object-oriented programming": [
+        "class",
+        "object",
+        "encapsulation",
+        "inheritance",
+        "polymorphism",
+        "abstraction",
+    ],
+
+    # ---------------- DEVOPS ----------------
+
+    "purpose of ci/cd": [
+        "continuous integration",
+        "continuous deployment",
+        "automation",
+        "testing",
+        "pipeline",
+        "deployment",
+    ],
+
+    "container and a virtual machine": [
+        "container",
+        "virtual machine",
+        "docker",
+        "operating system",
+        "isolation",
+    ],
+
+    "deploy a web application using docker": [
+        "dockerfile",
+        "image",
+        "container",
+        "port",
+        "registry",
+        "deployment",
+    ],
+
+    "problems does kubernetes solve": [
+        "containers",
+        "orchestration",
+        "scaling",
+        "service",
+        "deployment",
+        "self healing",
+    ],
+
+    # ---------------- CYBERSECURITY ----------------
+
+    "sql injection": [
+        "sql injection",
+        "parameterized",
+        "prepared statement",
+        "input validation",
+        "orm",
+    ],
+
+    "principle of least privilege": [
+        "least privilege",
+        "permissions",
+        "minimum access",
+        "authorization",
+        "security",
+    ],
+
+    "common web application security vulnerabilities": [
+        "xss",
+        "sql injection",
+        "csrf",
+        "authentication",
+        "authorization",
+        "injection",
+    ],
+
+    # ---------------- UI/UX ----------------
+
+    "difference between ux and ui": [
+        "ux",
+        "user experience",
+        "ui",
+        "interface",
+        "usability",
+        "visual",
+    ],
+
+    "user research": [
+        "users",
+        "interviews",
+        "surveys",
+        "personas",
+        "usability",
+        "research",
+    ],
+
+    "wireframes and prototypes": [
+        "wireframe",
+        "prototype",
+        "layout",
+        "testing",
+        "interaction",
+    ],
+}
+
+
+# ============================================================
+# SMART DETERMINISTIC HELPERS
+# ============================================================
+
+def _normalize_for_matching(value: Any) -> str:
+    if value is None:
+        return ""
+
+    text = str(value).lower()
+
+    text = text.replace(
+        "can't",
+        "cannot",
+    )
+
+    text = text.replace(
+        "don't",
+        "do not",
+    )
+
+    text = re.sub(
+        r"[^\w\s+#./-]",
+        " ",
+        text,
+    )
+
+    text = re.sub(
+        r"\s+",
+        " ",
+        text,
+    )
+
+    return text.strip()
+
+
+def _find_expected_concepts(
+    question: str,
+) -> List[str]:
+    normalized_question = _normalize_for_matching(
+        question
+    )
+
+    concepts = []
+
+    for question_pattern, expected in QUESTION_CONCEPTS.items():
+        pattern = _normalize_for_matching(
+            question_pattern
+        )
+
+        if (
+            pattern in normalized_question
+            or normalized_question in pattern
+        ):
+            concepts.extend(expected)
+
+    # Remove duplicates while preserving order.
+    return list(
+        dict.fromkeys(concepts)
+    )
+
+
+def _concept_matches(
+    answer: str,
+    concept: str,
+) -> bool:
+    normalized_answer = _normalize_for_matching(
+        answer
+    )
+
+    normalized_concept = _normalize_for_matching(
+        concept
+    )
+
+    if not normalized_concept:
+        return False
+
+    # Direct phrase match.
+    if normalized_concept in normalized_answer:
+        return True
+
+    # Useful aliases.
+    aliases = {
+        "missing values": [
+            "missing",
+            "null",
+            "nan",
+            "imputation",
+        ],
+        "duplicates": [
+            "duplicate",
+            "duplicated",
+            "repeated records",
+        ],
+        "visualization": [
+            "chart",
+            "graph",
+            "plot",
+            "visual",
+        ],
+        "kpi": [
+            "kpis",
+            "key performance indicator",
+            "metrics",
+        ],
+        "sql": [
+            "query",
+            "database",
+            "select",
+        ],
+        "api": [
+            "endpoint",
+            "rest api",
+            "restful",
+        ],
+        "authentication": [
+            "login",
+            "identity",
+            "auth",
+        ],
+        "authorization": [
+            "permission",
+            "permissions",
+            "access control",
+        ],
+        "monitoring": [
+            "monitor",
+            "logs",
+            "metrics",
+            "alerts",
+        ],
+        "testing": [
+            "test",
+            "tests",
+            "unit test",
+            "integration test",
+        ],
+        "responsive": [
+            "mobile",
+            "desktop",
+            "screen size",
+        ],
+    }
+
+    for alias in aliases.get(
+        normalized_concept,
+        [],
+    ):
+        if alias in normalized_answer:
+            return True
+
+    return False
+
+
+def _calculate_concept_coverage(
+    question: str,
+    answer: str,
+) -> tuple:
+    expected = _find_expected_concepts(
+        question
+    )
+
+    if not expected:
+        return 0.0, [], []
+
+    matched = []
+    missing = []
+
+    for concept in expected:
+        if _concept_matches(
+            answer,
+            concept,
+        ):
+            matched.append(concept)
+        else:
+            missing.append(concept)
+
+    coverage = (
+        len(matched)
+        / len(expected)
+    )
+
+    return coverage, matched, missing
+
+
+def _has_example(answer: str) -> bool:
+    normalized = _normalize_for_matching(
+        answer
+    )
+
+    example_terms = [
+        "example",
+        "for example",
+        "e.g",
+        "project",
+        "in my project",
+        "مثال",
+        "مثلا",
+        "مشروع",
+    ]
+
+    return any(
+        term in normalized
+        for term in example_terms
+    )
+
+
+def _has_reasoning(answer: str) -> bool:
+    normalized = _normalize_for_matching(
+        answer
+    )
+
+    reasoning_terms = [
+        "because",
+        "therefore",
+        "so that",
+        "first",
+        "then",
+        "finally",
+        "approach",
+        "reason",
+        "trade off",
+        "tradeoff",
+        "step",
+        "steps",
+        "لأن",
+        "علشان",
+        "بالتالي",
+        "أولا",
+        "ثم",
+    ]
+
+    return any(
+        term in normalized
+        for term in reasoning_terms
+    )
+
+
+def _has_technical_language(
+    answer: str,
+) -> bool:
+    normalized = _normalize_for_matching(
+        answer
+    )
+
+    technical_terms = [
+        "api",
+        "sql",
+        "database",
+        "model",
+        "algorithm",
+        "dataset",
+        "feature",
+        "training",
+        "validation",
+        "testing",
+        "deployment",
+        "authentication",
+        "authorization",
+        "component",
+        "react",
+        "python",
+        "docker",
+        "kubernetes",
+        "index",
+        "query",
+        "kpi",
+        "statistics",
+        "correlation",
+        "regression",
+        "classification",
+    ]
+
+    return any(
+        term in normalized
+        for term in technical_terms
+    )
+
+
+# ============================================================
 # SCORE PARSING
 # ============================================================
 
@@ -497,157 +1181,242 @@ def _fallback_evaluation(
     missing_skills: Any = None,
 ) -> str:
     """
-    Deterministic zero-cost evaluation used when Ollama
-    is unavailable.
+    Smart deterministic zero-cost evaluator.
 
-    This is intentionally conservative.
+    Evaluates the answer against concepts expected by
+    the specific interview question instead of relying
+    only on answer length.
     """
+
+    # ========================================================
+    # UNKNOWN ANSWER
+    # ========================================================
 
     if _is_unknown_answer(answer):
         return """SCORE: 5
 
 FEEDBACK:
-The answer does not demonstrate the required knowledge for this question. Review the topic and try to explain the main concept in your own words.
+The answer does not demonstrate the knowledge required for this question.
 
 STRENGTHS:
-You were honest about not knowing the answer.
+You were honest instead of providing an invented answer.
 
 IMPROVEMENTS:
-Review the underlying concept and practice explaining it with a simple example.
+Review the main concept behind the question and practice explaining it in your own words with a simple example.
 
 IMPROVED_ANSWER:
-A strong answer should define the main concept clearly, explain how it works, and provide a short practical example.
+A strong answer should define the main concept, explain how it works, and provide a short practical example.
 """
 
-    normalized = re.sub(
-        r"\s+",
-        " ",
-        str(answer).strip(),
+    normalized_answer = _normalize_for_matching(
+        answer
     )
 
-    words = normalized.split()
-    word_count = len(words)
+    word_count = len(
+        normalized_answer.split()
+    )
 
-    score = 25
+    # ========================================================
+    # CONCEPT COVERAGE
+    # ========================================================
 
-    if word_count < 8:
-        score = 25
-    elif word_count < 20:
-        score = 45
-    elif word_count < 45:
-        score = 65
+    coverage, matched, missing = (
+        _calculate_concept_coverage(
+            question,
+            answer,
+        )
+    )
+
+    # ========================================================
+    # BASE SCORE
+    # ========================================================
+
+    # Concept knowledge is the most important factor.
+    concept_score = coverage * 65
+
+    # Basic completeness.
+    if word_count >= 60:
+        completeness_score = 15
+    elif word_count >= 40:
+        completeness_score = 12
+    elif word_count >= 20:
+        completeness_score = 9
+    elif word_count >= 8:
+        completeness_score = 5
     else:
-        score = 78
+        completeness_score = 2
 
-    lower_answer = normalized.lower()
-
-    example_terms = {
-        "example",
-        "for example",
-        "e.g",
-        "مثال",
-        "مثلاً",
-        "مثلا",
-        "مشروع",
-        "project",
-    }
-
-    reasoning_terms = {
-        "because",
-        "therefore",
-        "first",
-        "then",
-        "finally",
-        "approach",
-        "reason",
-        "trade-off",
-        "tradeoff",
-        "because",
-        "علشان",
-        "لأن",
-        "بالتالي",
-        "أولاً",
-        "ثم",
-    }
-
-    if any(
-        term in lower_answer
-        for term in example_terms
-    ):
-        score += 5
-
-    if any(
-        term in lower_answer
-        for term in reasoning_terms
-    ):
-        score += 5
-
-    score = min(score, 90)
-
-    role_text = role or "the target role"
-
-    missing_text = _skills_to_text(
-        missing_skills
+    score = (
+        concept_score
+        + completeness_score
     )
 
-    if score < 40:
+    # ========================================================
+    # TECHNICAL LANGUAGE
+    # ========================================================
+
+    if _has_technical_language(answer):
+        score += 7
+
+    # ========================================================
+    # REASONING
+    # ========================================================
+
+    if _has_reasoning(answer):
+        score += 6
+
+    # ========================================================
+    # EXAMPLE
+    # ========================================================
+
+    if _has_example(answer):
+        score += 7
+
+    # ========================================================
+    # PENALTY FOR VERY SHORT ANSWERS
+    # ========================================================
+
+    if word_count < 5:
+        score = min(
+            score,
+            15,
+        )
+
+    # ========================================================
+    # CAP
+    # ========================================================
+
+    score = max(
+        0,
+        min(
+            round(score),
+            100,
+        ),
+    )
+
+    # ========================================================
+    # FEEDBACK
+    # ========================================================
+
+    if coverage == 0:
         feedback = (
-            "The answer is too short to demonstrate "
-            "enough understanding. Try explaining the "
-            "concept directly and include a practical example."
+            "The answer does not contain the main concepts "
+            "expected for this question."
         )
 
-        strengths = (
-            "You attempted to address the question."
-        )
-
-        improvements = (
-            "Add more technical detail, explain your reasoning, "
-            "and connect the answer to a real project or example."
-        )
-
-    elif score < 70:
+    elif coverage < 0.35:
         feedback = (
-            "The answer shows partial understanding, "
-            "but it needs more technical detail and clearer reasoning."
+            "The answer demonstrates limited understanding "
+            "of the main concepts required by the question."
         )
 
-        strengths = (
-            "You addressed the main idea of the question."
+    elif coverage < 0.60:
+        feedback = (
+            "The answer demonstrates partial understanding "
+            "but misses several important concepts."
         )
 
-        improvements = (
-            "Explain the concept more systematically and "
-            "support your answer with a concrete example."
+    elif coverage < 0.80:
+        feedback = (
+            "The answer covers most of the important concepts "
+            "but could be more complete and precise."
         )
 
     else:
         feedback = (
-            f"The answer demonstrates a reasonable level of "
-            f"understanding for {role_text}. "
-            "Adding more precise technical details would make it stronger."
+            "The answer covers most of the expected concepts "
+            "and demonstrates good understanding."
         )
 
-        strengths = (
-            "The answer provides useful information and "
-            "shows an attempt to explain the reasoning."
+    # ========================================================
+    # STRENGTHS
+    # ========================================================
+
+    strengths_parts = []
+
+    if matched:
+        strengths_parts.append(
+            "You correctly addressed: "
+            + ", ".join(matched[:4])
+            + "."
         )
 
-        improvements = (
-            "Add measurable details, technical terminology, "
-            "or a concrete project example where appropriate."
+    if _has_reasoning(answer):
+        strengths_parts.append(
+            "You included some reasoning."
         )
 
-    if missing_text:
-        improvements += (
-            f" Pay particular attention to: {missing_text}."
+    if _has_example(answer):
+        strengths_parts.append(
+            "You supported the answer with an example or project context."
         )
 
-    improved_answer = (
-        "A stronger answer would directly define the concept, "
-        "explain the reasoning or steps involved, and finish "
-        "with a short practical example relevant to the target role."
+    if not strengths_parts:
+        strengths_parts.append(
+            "You attempted to answer the interview question."
+        )
+
+    strengths = " ".join(
+        strengths_parts[:3]
     )
+
+    # ========================================================
+    # IMPROVEMENTS
+    # ========================================================
+
+    improvements_parts = []
+
+    if missing:
+        improvements_parts.append(
+            "Try to cover: "
+            + ", ".join(missing[:5])
+            + "."
+        )
+
+    if not _has_reasoning(answer):
+        improvements_parts.append(
+            "Explain your reasoning or the steps you would follow."
+        )
+
+    if not _has_example(answer):
+        improvements_parts.append(
+            "Add a short practical example when appropriate."
+        )
+
+    if word_count < 20:
+        improvements_parts.append(
+            "Provide more technical detail instead of a very short response."
+        )
+
+    if not improvements_parts:
+        improvements_parts.append(
+            "Make the explanation more precise and connect it to a practical scenario."
+        )
+
+    improvements = " ".join(
+        improvements_parts[:4]
+    )
+
+    # ========================================================
+    # IMPROVED ANSWER
+    # ========================================================
+
+    if missing:
+        missing_text = ", ".join(
+            missing[:4]
+        )
+
+        improved_answer = (
+            f"A stronger answer should explain the main concept "
+            f"and cover important points such as {missing_text}. "
+            f"It should also include a short practical example."
+        )
+    else:
+        improved_answer = (
+            "A stronger answer should explain the concept clearly, "
+            "describe the reasoning or steps involved, and include "
+            "a short practical example."
+        )
 
     return f"""SCORE: {score}
 
