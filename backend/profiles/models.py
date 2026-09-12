@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+
 from cloudinary.models import CloudinaryField
 
 
@@ -46,15 +47,12 @@ class Profile(models.Model):
     )
 
     created_at = models.DateTimeField(
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     updated_at = models.DateTimeField(
-        auto_now=True
+        auto_now=True,
     )
 
     def __str__(self):
-        return (
-            self.full_name
-            or self.user.username
-        )
+        return self.full_name or self.user.username
