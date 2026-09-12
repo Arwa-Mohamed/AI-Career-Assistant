@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "interviews",
     "career_projects",
     "career_taxonomy",
+    "cloudinary",
 
     "allauth",
     "allauth.account",
