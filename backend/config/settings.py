@@ -17,13 +17,6 @@ import dj_database_url
 from dotenv import load_dotenv
 import cloudinary
 
-CLOUDINARY_URL = os.getenv("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")
-
-if CLOUDINARY_URL:
-    cloudinary.config(
-        cloudinary_url=CLOUDINARY_URL
-    )
-
 # =========================================================
 # BASE CONFIGURATION
 # =========================================================
@@ -31,6 +24,17 @@ if CLOUDINARY_URL:
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
+
+CLOUDINARY_URL = os.getenv("cloudinary://REDACTED", "").strip()
+
+if CLOUDINARY_URL:
+    cloudinary.config(cloudinary_url=CLOUDINARY_URL)
+else:
+    cloudinary.config(
+        cloud_name=os.getenv("r4wot8dh", ""),
+        api_key=os.getenv("441334781831778", ""),
+        api_secret=os.getenv("iBNTcYYTIYgeOmbkfKCCqeE_kpM", ""),
+    )
 
 
 def env_bool(name, default=False):
