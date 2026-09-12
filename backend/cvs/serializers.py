@@ -7,26 +7,14 @@ from .models import CV
 
 class CVFileField(serializers.FileField):
     """
-    File field for CV uploads.
-
-    Upload:
-        Works normally with Django/DRF.
-
-    Serialization:
-        Returns only the stored file name/path.
-        It NEVER calls storage.url(), which is important
-        because production CV files are stored as private
-        Vercel Blob objects.
+    Handles CV uploads normally, but never calls storage.url()
+    when serializing a private Vercel Blob file.
     """
 
     def to_representation(self, value):
         if not value:
             return None
 
-        # IMPORTANT:
-        # Do NOT use value.url here.
-        # Private Vercel Blob storage intentionally does not
-        # expose a public URL.
         try:
             return value.name
         except Exception:
@@ -34,9 +22,7 @@ class CVFileField(serializers.FileField):
 
 
 class CVSerializer(serializers.ModelSerializer):
-    file = CVFileField(
-        required=True,
-    )
+    file = CVFileField(required=True)
 
     class Meta:
         model = CV
@@ -65,11 +51,7 @@ class CVSerializer(serializers.ModelSerializer):
                 "A CV file is required."
             )
 
-        extension = (
-            Path(value.name)
-            .suffix
-            .lower()
-        )
+        extension = Path(value.name).suffix.lower()
 
         allowed_extensions = {
             ".pdf",
@@ -81,7 +63,6 @@ class CVSerializer(serializers.ModelSerializer):
                 "Only PDF and DOCX files are allowed."
             )
 
-        # Keep uploads below Vercel's request-body limit.
         max_size = 4 * 1024 * 1024
 
         if value.size > max_size:
@@ -90,3 +71,41 @@ class CVSerializer(serializers.ModelSerializer):
             )
 
         return value
+
+    def to_representation(self, instance):
+        """
+        Explicitly serialize the CV object without allowing DRF's
+        default FileField representation to call value.url.
+
+        This is required because CV files are stored as private
+        Vercel Blob objects.
+        """
+
+        data = {}
+
+        for field_name, field in self.fields.items():
+
+            # IMPORTANT:
+            # Never let DRF serialize the private FileField itself.
+            if field_name == "file":
+                continue
+
+            attribute = field.get_attribute(instance)
+
+            if attribute is None:
+                data[field_name] = None
+            else:
+                data[field_name] = field.to_representation(
+                    attribute
+                )
+
+        # Return the stored pathname instead of storage.url()
+        if instance.file:
+            try:
+                data["file"] = instance.file.name
+            except Exception:
+                data["file"] = None
+        else:
+            data["file"] = None
+
+        return data
