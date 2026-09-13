@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-CLOUDINARY_URL = os.getenv("cloudinary://REDACTED", "").strip()
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 
 if CLOUDINARY_URL:
     cloudinary.config(
