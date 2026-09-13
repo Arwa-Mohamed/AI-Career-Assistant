@@ -25,13 +25,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "").strip()
 
 if CLOUDINARY_URL:
-    cloudinary.config(
-        cloudinary_url=CLOUDINARY_URL,
-        secure=True,
-    )
+    cloudinary.config(cloudinary_url=CLOUDINARY_URL)
 
 
 def env_bool(name, default=False):
