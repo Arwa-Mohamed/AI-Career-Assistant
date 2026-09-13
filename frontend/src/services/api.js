@@ -28,6 +28,9 @@ async function refreshAccessToken() {
       }
     );
 
+    const data =
+      await response.json();
+
     if (!response.ok) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
@@ -35,10 +38,10 @@ async function refreshAccessToken() {
       return null;
     }
 
-    const data =
-      await response.json();
-
     if (!data.access) {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+
       return null;
     }
 
@@ -46,6 +49,18 @@ async function refreshAccessToken() {
       "accessToken",
       data.access
     );
+
+    /*
+     * When refresh-token rotation is enabled,
+     * Django may return a new refresh token.
+     * Save it so the session can continue.
+     */
+    if (data.refresh) {
+      localStorage.setItem(
+        "refreshToken",
+        data.refresh
+      );
+    }
 
     return data.access;
   } catch {
@@ -83,6 +98,10 @@ async function apiFetch(
     }
   );
 
+  /*
+   * Request succeeded or this is already
+   * the retry request.
+   */
   if (
     response.status !== 401 ||
     !retry
@@ -90,6 +109,10 @@ async function apiFetch(
     return response;
   }
 
+  /*
+   * Access token expired.
+   * Try to get a new one automatically.
+   */
   const newToken =
     await refreshAccessToken();
 
@@ -97,6 +120,10 @@ async function apiFetch(
     return response;
   }
 
+  /*
+   * Retry the original request with
+   * the new access token.
+   */
   return apiFetch(
     url,
     {
