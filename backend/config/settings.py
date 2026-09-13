@@ -98,6 +98,7 @@ INSTALLED_APPS = [
 
     "rest_framework",
     "corsheaders",
+    "rest_framework_simplejwt.token_blacklist",
 
     "core",
     "accounts",
@@ -306,6 +307,23 @@ REST_FRAMEWORK = {
     ),
 }
 
+
+# =========================================================
+# JWT CONFIGURATION
+# =========================================================
+
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=30
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=30
+    ),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+}
 
 # =========================================================
 # PRODUCTION SECURITY
